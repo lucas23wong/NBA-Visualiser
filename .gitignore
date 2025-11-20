@@ -1,0 +1,17 @@
+# Python / Environment
+.venv/
+__pycache__/
+*.pyc
+
+# Data Science / Output
+*.pkl
+*.ipynb_checkpoints/ # Ignore Jupyter Notebook checkpoints
+data/*.csv           # If you only want to commit the script, not the large raw data
+
+# Configuration / Secrets (CRITICAL)
+app/db_config.py
+*.env
+.vscode/
+
+# OS Files
+.DS_Store
