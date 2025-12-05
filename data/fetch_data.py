@@ -7,6 +7,7 @@ from nba_api.stats.endpoints import (
 )
 from nba_api.stats.library.parameters import SeasonType
 from typing import List, Dict, Any
+import os  
 
 COMMON_PARAMS = {}
 
@@ -17,7 +18,7 @@ def get_current_season_str() -> str:
     today = dt.date.today()
     year = today.year
     month = today.month
-    if month >= 10:  # NBA season starts in October
+    if month >= 10: 
         season = f"{year}-{str(year + 1)[-2:]}"
     else:
         season = f"{year - 1}-{str(year)[-2:]}"
@@ -40,15 +41,14 @@ def fetch_player_data(season: str) -> pd.DataFrame:
         print("Fetching base player stats (Per Game PTS, AST, REB, etc.)...")
         base_stats = leaguedashplayerstats.LeagueDashPlayerStats(
             season=season,
-            per_mode_detailed="PerGame",  # Use 'per_mode_detailed' as per the documentation
-            season_type_all_star="Regular Season",  # Use 'season_type_all_star' for season type
-            measure_type_detailed_defense="Base",  # Use 'measure_type_detailed_defense' for base stats
+            per_mode_detailed="PerGame",  
+            season_type_all_star="Regular Season", 
+            measure_type_detailed_defense="Base",  
         ).get_data_frames()[0]
 
         required_columns = ['PLAYER_ID', 'PLAYER_NAME', 'TEAM_ABBREVIATION', 'GP', 'MIN', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'TOV', 'FG_PCT', 'FG3_PCT', 'FT_PCT']
         if not all(col in base_stats.columns for col in required_columns):
-            print(f"Missing required columns in base player stats for season {season}. Skipping...")
-            return pd.DataFrame()
+            raise ValueError(f"Missing required columns in base player stats for season {season}.")
 
         base_stats = base_stats[required_columns]
 
@@ -57,21 +57,21 @@ def fetch_player_data(season: str) -> pd.DataFrame:
         print("Fetching advanced player stats (Net rating, Usage %, etc.)...")
         advanced_stats = leaguedashplayerstats.LeagueDashPlayerStats(
             season=season,
-            per_mode_detailed="PerGame",  # Use 'per_mode_detailed' as per the documentation
-            season_type_all_star="Regular Season",  # Use 'season_type_all_star' for season type
-            measure_type_detailed_defense="Advanced",  # Use 'measure_type_detailed_defense' for advanced stats
+            per_mode_detailed="PerGame",  
+            season_type_all_star="Regular Season",  
+            measure_type_detailed_defense="Advanced",  
         ).get_data_frames()[0]
 
         required_columns_adv = ['PLAYER_ID', 'NET_RATING', 'TS_PCT', 'USG_PCT', 'AST_PCT', 'REB_PCT', 'PIE']
         if not all(col in advanced_stats.columns for col in required_columns_adv):
-            print(f"Missing required columns in advanced player stats for season {season}. Skipping...")
-            return pd.DataFrame()
+            raise ValueError(f"Missing required columns in advanced player stats for season {season}.")
 
         advanced_stats = advanced_stats[required_columns_adv]
 
         time.sleep(3)
 
         combined_data = pd.merge(base_stats, advanced_stats, on='PLAYER_ID', how='inner')
+        combined_data['SEASON'] = season
 
         print(f"Merged {len(combined_data)} player records with base and advanced stats.")
         return combined_data
@@ -94,6 +94,8 @@ def fetch_team_data(season: str) -> pd.DataFrame:
     try: 
         print("Fetching base team stats (Win/loss records)...")
 
+        required_columns = ['TEAM_ID', 'TEAM_NAME', 'TEAM_ABBREVIATION', 'W', 'L', 'W_PCT'] 
+
         base_team_stats = leaguedashteamstats.LeagueDashTeamStats(
             season=season,
             season_type_all_star="Regular Season",
@@ -101,7 +103,6 @@ def fetch_team_data(season: str) -> pd.DataFrame:
             measure_type_detailed_defense="Base",
         ).get_data_frames()[0]
 
-        required_columns = ['TEAM_ID', 'TEAM_NAME', 'GP', 'W', 'L', 'W_PCT', 'MIN', 'PTS']
         if not all(col in base_team_stats.columns for col in required_columns):
             print(f"Missing required columns in base team stats for season {season}. Skipping...")
             return pd.DataFrame()
@@ -150,7 +151,7 @@ def run_data_pipeline():
         current_year_end = int(current_season_str.split('-')[0]) + 1
     except ValueError: 
         print("Error determining current season year. Defaulting to 2025 end.")
-        current_year_end = 2000
+        current_year_end = 2023
 
     seasons_to_fetch = []
     for start_year in range(START_YEAR, current_year_end):
@@ -165,26 +166,33 @@ def run_data_pipeline():
     all_team_data = []
     
     for season in seasons_to_fetch:
-        player_df = fetch_player_data(season)
-        if not player_df.empty:
-            all_player_data.append(player_df)
-        
-        team_df = fetch_team_data(season)
-        if not team_df.empty:
-            all_team_data.append(team_df)
+        try:
+            player_df = fetch_player_data(season)
+            if not player_df.empty:
+                all_player_data.append(player_df)
+            
+            team_df = fetch_team_data(season)
+            if not team_df.empty:
+                all_team_data.append(team_df)
+        except ValueError as e:
+            print(f"Skipping season {season} due to error: {e}")
         
         time.sleep(5)
     
+    output_dir = 'data'
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
     if all_player_data:
         final_player_df = pd.concat(all_player_data, ignore_index=True)
-        final_player_df.to_csv('data/nba_player_data.csv', index=False)
-        print(f"\n✅ All Player data saved to 'data/nba_player_data.csv'. Total rows: {len(final_player_df)}")
+        final_player_df.to_csv(os.path.join(output_dir, 'nba_player_data.csv'), index=False)
+        print(f"\n✅ All Player data saved to '{output_dir}/nba_player_data.csv'. Total rows: {len(final_player_df)}")
         print(final_player_df.head())
 
     if all_team_data:
         final_team_df = pd.concat(all_team_data, ignore_index=True)
-        final_team_df.to_csv('data/nba_team_data.csv', index=False)
-        print(f"✅ All Team data saved to 'data/nba_team_data.csv'. Total rows: {len(final_team_df)}")
+        final_team_df.to_csv(os.path.join(output_dir, 'nba_team_data.csv'), index=False)
+        print(f"✅ All Team data saved to '{output_dir}/nba_team_data.csv'. Total rows: {len(final_team_df)}")
         print(final_team_df.head())
 
 if __name__ == "__main__":
