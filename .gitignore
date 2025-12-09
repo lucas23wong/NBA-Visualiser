@@ -5,10 +5,9 @@ __pycache__/
 
 # Data Science / Output
 *.pkl
-*.ipynb_checkpoints/ # Ignore Jupyter Notebook checkpoints
-data/*.csv           # If you only want to commit the script, not the large raw data
+*.ipynb_checkpoints/        
 
-# Configuration / Secrets (CRITICAL)
+# Configuration 
 app/db_config.py
 *.env
 .vscode/

@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Player History Visualization{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <header class="mb-10 text-center">
+        <h1 class="text-4xl font-extrabold text-gray-400">
+            Player Historical Trend Viewer
+        </h1>
+        <p class="mt-2 text-lg text-gray-600">
+            Compare key statistics for any player across multiple seasons.
+        </p>
+    </header>
+
+    <div class="bg-white p-8 rounded-xl shadow-2xl border border-gray-100">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <!-- Player Name Input -->
+            <div>
+                <label for="player-input" class="block text-sm font-medium text-black">Enter Player Name</label>
+                <input type="text" id="player-input" placeholder="e.g., LeBron James"
+                    class="mt-1 block w-full rounded-md border-gray-300 text-black shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+            </div>
+
+            <!-- Stat Selection -->
+            <div>
+                <label for="stat-select" class="block text-sm font-medium text-black">Select Statistic</label>
+                <select id="stat-select"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-black focus:border-indigo-500 focus:ring-indigo-500 p-2 border bg-white">
+                    <option value="PTS">Points Per Game (PTS)</option>
+                    <option value="REB">Rebounds Per Game (REB)</option>
+                    <option value="AST">Assists Per Game (AST)</option>
+                    <option value="PER">Player Efficiency Rating (PER)</option>
+                    <option value="TS_PCT">True Shooting Percentage (TS%)</option>
+                    <option value="STL">Steals Per Game (STL)</option>
+                    <option value="BLK">Blocks Per Game (BLK)</option>
+                </select>
+            </div>
+
+            <!-- Fetch Button -->
+            <div class="flex items-end">
+                <button id="fetch-history-btn"
+                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 disabled:opacity-50">
+                    Load History
+                </button>
+            </div>
+        </div>
+
+        <!-- Visualization Area -->
+        <div class="mt-8">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Historical Performance Chart</h3>
+            <div id="chart-container"
+                class="w-full h-96 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-center relative">
+                <p id="chart-message" class="text-gray-500 text-center p-4">Search for a player to view their historical
+                    performance trend.</p>
+                <svg id="history-chart" class="w-full h-full absolute top-0 left-0"></svg>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script>
+    // --- D3.js Visualization Logic ---
+    const playerInput = document.getElementById('player-input');
+    const statSelect = document.getElementById('stat-select');
+    const fetchBtn = document.getElementById('fetch-history-btn');
+    const chartMessage = document.getElementById('chart-message');
+    const svg = d3.select("#history-chart");
+    const chartContainer = document.getElementById('chart-container');
+
+    // Simple modal replacement for alerts
+    function showMessage(message) {
+        chartMessage.textContent = message;
+        chartMessage.style.display = 'block';
+        svg.selectAll('*').remove(); // Clear chart
+    }
+
+    fetchBtn.addEventListener('click', async () => {
+        const playerName = playerInput.value.trim();
+        const statName = statSelect.value;
+        if (!playerName) {
+            showMessage('Please enter a player name.');
+            return;
+        }
+
+        fetchBtn.disabled = true;
+        showMessage('Loading data...');
+
+        try {
+            // API call to the Flask backend route
+            const response = await fetch(`/api/history/${encodeURIComponent(playerName)}/${statName}`);
+            const result = await response.json();
+
+            if (result.error) {
+                showMessage(`Error: ${result.error}`);
+                return;
+            }
+
+            // The data structure is expected to be: [{"season": "YYYY-YY", "value": X.X}, ...]
+            if (!result.data || result.data.length === 0) {
+                showMessage(`No historical data found for "${playerName}" in ${statName}.`);
+                return;
+            }
+
+            // Successfully loaded data
+            chartMessage.style.display = 'none'; // Hide message
+            drawChart(result.data, statName, playerName);
+
+        } catch (error) {
+            console.error('Fetch error:', error);
+            showMessage('Failed to fetch data due to a server error.');
+        } finally {
+            fetchBtn.disabled = false;
+        }
+    });
+
+    // Drawing function using D3.js
+    function drawChart(data, statName, playerName) {
+        svg.selectAll('*').remove(); // Clear previous chart elements
+
+        const containerRect = chartContainer.getBoundingClientRect();
+        const margin = { top: 40, right: 30, bottom: 60, left: 70 };
+        const width = containerRect.width - margin.left - margin.right;
+        const height = containerRect.height - margin.top - margin.bottom;
+
+        // Create the drawing area group
+        const g = svg.append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // 1. Scales
+        // Map seasons (categorical) to positions on the X-axis
+        const x = d3.scaleBand()
+            .domain(data.map(d => d.season))
+            .range([0, width])
+            .padding(0.2);
+
+        // Map stat values (numerical) to positions on the Y-axis
+        const y = d3.scaleLinear()
+            // Set the domain from 0 up to 10% more than the max value
+            .domain([0, d3.max(data, d => d.value) * 1.1])
+            .range([height, 0]);
+
+        // 2. Axes
+        // X-Axis (Seasons)
+        g.append("g")
+            .attr("transform", `translate(0,${height})`)
+            .call(d3.axisBottom(x))
+            .selectAll("text")
+            .attr("transform", "rotate(-45)")
+            .style("text-anchor", "end")
+            .style("fill", "#4B5563"); // Dark gray text
+
+        // Y-Axis (Stat Value)
+        g.append("g")
+            .call(d3.axisLeft(y))
+            .selectAll("text")
+            .style("fill", "#4B5563"); // Dark gray text
+
+        // Y-Axis Label
+        g.append("text")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 0 - margin.left + 10)
+            .attr("x", 0 - (height / 2))
+            .attr("dy", "1em")
+            .style("text-anchor", "middle")
+            .attr("fill", "#4B5563")
+            .attr("font-weight", "600")
+            .text(statName);
+
+        // 3. Line Generator
+        const line = d3.line()
+            // X position is the center of the band
+            .x(d => x(d.season) + x.bandwidth() / 2)
+            .y(d => y(d.value));
+
+        // 4. Draw Line
+        g.append("path")
+            .datum(data)
+            .attr("fill", "none")
+            .attr("stroke", "#4F46E5") // Indigo color
+            .attr("stroke-width", 4)
+            .attr("d", line);
+
+        // 5. Draw Dots (Data Points) and Tooltip functionality
+        const tooltip = d3.select(chartContainer).append("div")
+            .attr("class", "tooltip absolute bg-gray-800 text-white text-xs p-2 rounded-lg shadow-xl pointer-events-none opacity-0 transition duration-200")
+            .style("position", "absolute");
+
+
+        g.selectAll(".dot")
+            .data(data)
+            .enter().append("circle")
+            .attr("class", "dot")
+            .attr("cx", d => x(d.season) + x.bandwidth() / 2)
+            .attr("cy", d => y(d.value))
+            .attr("r", 6)
+            .attr("fill", "#4F46E5") // Indigo color
+            .attr("stroke", "#FFFFFF")
+            .attr("stroke-width", 2)
+            .style("cursor", "pointer")
+            .on("mouseover", function (event, d) {
+                d3.select(this).attr("r", 8).attr("fill", "#6366F1"); // Highlight effect
+
+                tooltip.style("opacity", 1)
+                    .html(`
+                           <span class="font-bold">${playerName}</span><br>
+                           Season: ${d.season}<br>
+                           ${statName}: ${d.value.toFixed(2)}
+                       `)
+                    .style("left", (event.pageX - chartContainer.offsetLeft + 15) + "px")
+                    .style("top", (event.pageY - chartContainer.offsetTop - 50) + "px");
+            })
+            .on("mouseout", function () {
+                d3.select(this).attr("r", 6).attr("fill", "#4F46E5"); // Reset effect
+                tooltip.style("opacity", 0);
+            });
+    }
+
+    // Initialize the chart message to be visible
+    document.addEventListener('DOMContentLoaded', () => {
+        showMessage('Search for a player to view their historical performance trend.');
+    });
+
+</script>
+{% endblock %}

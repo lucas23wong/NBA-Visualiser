@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NBA ML Predictions{% endblock %}</title>
+    <!-- Load Tailwind CSS from CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Modern Dark Theme Styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a1a;
+            /* Very dark background */
+            color: #07080a;
+            /* Light gray text */
+        }
+
+        /* Custom scrollbar for a sleek look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #2d2d2d;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4a4a4a;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5c5c5c;
+        }
+    </style>
+</head>
+
+
+<body class="min-h-screen flex flex-col antialiased">
+
+    <!-- Navigation Bar (Header) - Dark primary color -->
+    <header class="bg-gray-900 shadow-xl sticky top-0 z-10 border-b border-red-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo/Branding: NBA PlayerAI with Basketball Icon -->
+                <a href="{{ url_for('index') }}" class="flex-shrink-0 flex items-center group">
+                    <!-- Basketball Icon SVG -->
+                    <svg class="h-8 w-8 text-red-600 group-hover:text-red-400 transition duration-300" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Path for a simple basketball design (circle with seams) -->
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 22a10 10 0 100-20 10 10 0 000 20zM12 2v20M2 12h20M6 4l6 18M18 4l-6 18" />
+                    </svg>
+                    <span
+                        class="ml-2 text-xl font-extrabold tracking-widest text-white group-hover:text-red-300 transition duration-300">NBA
+                        PlayerAI</span>
+                </a>
+
+                <!-- Primary Navigation Links -->
+                <nav class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+
+                        <!-- Visualize Link -->
+                        <a href="{{ url_for('player_visualization') }}"
+                            class="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-red-700 hover:text-white transition duration-200 ease-in-out">
+                            Visualize Player Data
+                        </a>
+
+                        <!-- Predictions Link -->
+                        <a href="{{ url_for('award_predictions') }}"
+                            class="px-4 py-2 rounded-lg text-sm font-bold bg-red-600 text-white hover:bg-red-700 transition duration-200 ease-in-out shadow-md hover:shadow-lg">
+                            Award Predictions
+                        </a>
+                    </div>
+                </nav>
+
+                <!-- Mobile Menu Button - Placeholder -->
+                <div class="md:hidden">
+                    <button type="button"
+                        class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-red-600">
+                        <!-- Hamburger Icon -->
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16m-7 6h7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <!-- Flask block where specific page content will be injected -->
+
+        <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl">
+            <h1 class="text-4xl font-extrabold text-white mb-6">2025-26 NBA League Leaders</h1>
+
+            <!-- Top Players Section -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Top Points -->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-indigo-600 mb-4">Top 5 Points PG</h2>
+                    <ul>
+                        {% for player in top_points %}
+                        <li class="flex justify-between items-center py-2">
+                            <span class="font-medium">{{ loop.index }}. {{ player.PLAYER_NAME }}</span>
+                            <span class="text-indigo-600 font-bold">{{ player.PTS }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <!-- Top Rebounds -->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-indigo-600 mb-4">Top 5 Rebounds PG</h2>
+                    <ul>
+                        {% for player in top_rebounds %}
+                        <li class="flex justify-between items-center py-2">
+                            <span class="font-medium">{{ loop.index }}. {{ player.PLAYER_NAME }}</span>
+                            <span class="text-indigo-600 font-bold">{{ player.REB }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <!-- Top Blocks -->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-indigo-600 mb-4">Top 5 Blocks PG</h2>
+                    <ul>
+                        {% for player in top_blocks %}
+                        <li class="flex justify-between items-center py-2">
+                            <span class="font-medium">{{ loop.index }}. {{ player.PLAYER_NAME }}</span>
+                            <span class="text-indigo-600 font-bold">{{ player.BLK }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <!-- Top Assists-->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-indigo-600 mb-4">Top 5 Assists PG</h2>
+                    <ul>
+                        {% for player in top_assists %}
+                        <li class="flex justify-between items-center py-2">
+                            <span class="font-medium">{{ loop.index }}. {{ player.PLAYER_NAME }}</span>
+                            <span class="text-indigo-600 font-bold">{{ player.AST }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <!-- Top Steals-->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-indigo-600 mb-4">Top 5 Steals PG</h2>
+                    <ul>
+                        {% for player in top_steals %}
+                        <li class="flex justify-between items-center py-2">
+                            <span class="font-medium">{{ loop.index }}. {{ player.PLAYER_NAME }}</span>
+                            <span class="text-indigo-600 font-bold">{{ player.STL }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <!-- Top Turnovers-->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-indigo-600 mb-4">Top 5 Turnovers PG</h2>
+                    <ul>
+                        {% for player in top_turnovers %}
+                        <li class="flex justify-between items-center py-2">
+                            <span class="font-medium">{{ loop.index }}. {{ player.PLAYER_NAME }}</span>
+                            <span class="text-indigo-600 font-bold">{{ player.TOV }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+    </main>
+
+    <script>
+        function now() {
+            return new Date().getFullYear();
+        }
+    </script>
+    <!-- Footer -->
+    <footer class="bg-gray-900 border-t border-red-700 mt-12">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 text-center">
+            <p class="text-gray-500 text-sm">
+                &copy; {{ now() }} NBA PlayerAI. Machine Learning Models.
+            </p>
+        </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+
+
+</body>
+
+</html>
